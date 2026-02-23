@@ -1,0 +1,8 @@
+__pycache__/
+*.pyc
+*.apk
+*.zip
+.venv/
+decompiled/
+debug_*.png
+logcat_*.txt
