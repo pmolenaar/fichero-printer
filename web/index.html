@@ -344,6 +344,14 @@
         </select>
       </div>
       <div class="setting-item">
+        <label>Label length (mm)</label>
+        <select id="labelLength">
+          <option value="30" selected>30 mm</option>
+          <option value="40">40 mm</option>
+          <option value="50">50 mm</option>
+        </select>
+      </div>
+      <div class="setting-item">
         <label>Shutdown (min)</label>
         <input type="number" id="shutdownTime" value="20" min="1" max="999">
       </div>
@@ -597,9 +605,14 @@ async function applySettings() {
 
 // ---- Image processing ----
 
+function getLabelHeight() {
+  const mm = parseInt($('labelLength').value) || 30;
+  return Math.round(mm * 8); // 203 DPI = 8 dots/mm
+}
+
 function textToCanvas(text, fontSize) {
   // Render text in landscape orientation, then rotate 90 CW for label
-  const landscapeW = 240;
+  const landscapeW = getLabelHeight();
   const landscapeH = PRINTHEAD_PX;
 
   const tmp = document.createElement('canvas');
@@ -611,23 +624,23 @@ function textToCanvas(text, fontSize) {
   ctx.fillStyle = '#fff';
   ctx.fillRect(0, 0, landscapeW, landscapeH);
 
-  // Render text
+  // Render text centered
   ctx.fillStyle = '#000';
   ctx.font = `${fontSize}px sans-serif`;
+  ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
 
+  const centerX = landscapeW / 2;
   const lines = text.split('\n');
   const lineHeight = fontSize * 1.2;
   const totalH = lines.length * lineHeight;
   const startY = (landscapeH - totalH) / 2 + lineHeight / 2;
 
   for (let i = 0; i < lines.length; i++) {
-    const metrics = ctx.measureText(lines[i]);
-    const x = (landscapeW - metrics.width) / 2;
-    ctx.fillText(lines[i], Math.max(4, x), startY + i * lineHeight);
+    ctx.fillText(lines[i], centerX, startY + i * lineHeight);
   }
 
-  // Rotate 90 CW: (x,y) -> (landscapeH - 1 - y, x)
+  // Rotate 90 CW
   const out = document.createElement('canvas');
   out.width = PRINTHEAD_PX;
   out.height = landscapeW;
@@ -836,6 +849,7 @@ function handleFile(file) {
 
 $('textInput').addEventListener('input', updateTextPreview);
 $('fontSize').addEventListener('input', updateTextPreview);
+$('labelLength').addEventListener('change', updateTextPreview);
 
 // File input
 $('fileInput').addEventListener('change', e => {
