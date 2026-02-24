@@ -47,12 +47,6 @@ The package name is `com.lj.fichero` but the SDK inside is from a company called
 
 One more reason to ditch the app and talk to the printer directly.
 
-## How it works
-
-The printer uses a proprietary command set prefixed with `10 FF`. It borrows one command from ESC/POS (the `1D 76 30` raster image command) but everything else is custom.
-
-The key discovery from decompiling the Fichero APK: the D11s is an "AiYin" device class that needs specific enable/stop commands (`10 FF FE 01` / `10 FF FE 45`). Using the wrong pair means the printer accepts image data silently but never actually prints.
-
 ## Web GUI
 
 Open `web/index.html` in Chrome or Edge. No server needed, no dependencies, no build step.
