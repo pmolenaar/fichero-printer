@@ -11,6 +11,7 @@ from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
 
 from bleak import BleakClient, BleakGATTCharacteristic, BleakScanner
+from bleak.backends.device import BLEDevice
 
 # --- BLE identifiers ---
 
@@ -64,14 +65,14 @@ class PrinterNotReady(PrinterError):
 # --- Discovery ---
 
 
-async def find_printer() -> str:
-    """Scan BLE for a Fichero/D11s printer. Returns the address."""
+async def find_printer() -> BLEDevice:
+    """Scan BLE for a Fichero/D11s printer. Returns the BLEDevice."""
     print("Scanning for printer...")
     devices = await BleakScanner.discover(timeout=8)
     for d in devices:
         if d.name and any(d.name.startswith(p) for p in PRINTER_NAME_PREFIXES):
             print(f"  Found {d.name} at {d.address}")
-            return d.address
+            return d  # Return full BLEDevice, not just address
     raise PrinterNotFound("No Fichero/D11s printer found. Is it turned on?")
 
 
@@ -266,10 +267,24 @@ class PrinterClient:
 
 
 @asynccontextmanager
-async def connect(address: str | None = None) -> AsyncGenerator[PrinterClient, None]:
+async def connect(address: str | BLEDevice | None = None) -> AsyncGenerator[PrinterClient, None]:
     """Discover printer, connect, and yield a ready PrinterClient."""
-    addr = address or await find_printer()
-    async with BleakClient(addr) as client:
+    device = address if isinstance(address, BLEDevice) else None
+    if device is None:
+        if address:
+            # Address string provided - scan to get full BLEDevice for proper BlueZ handling
+            print("Scanning for printer...")
+            devices = await BleakScanner.discover(timeout=8)
+            for d in devices:
+                if d.address.upper() == address.upper():
+                    device = d
+                    print(f"  Found {d.name} at {d.address}")
+                    break
+            if device is None:
+                raise PrinterNotFound(f"Device {address} not found during scan")
+        else:
+            device = await find_printer()
+    async with BleakClient(device) as client:
         pc = PrinterClient(client)
         await pc.start()
         yield pc
